@@ -1,0 +1,115 @@
+#include <iostream>
+#include <map>
+#include <set>
+#include <vector>
+
+using namespace std;
+
+map<char, vector<string>> grammar;
+map<char, set<char>> firstSets;
+map<char, set<char>> followSets;
+
+// Function to compute FIRST sets
+void computeFirst(char nonTerminal) {
+    if (!firstSets[nonTerminal].empty()) return; // Avoid recomputation
+
+    for (const string &production : grammar[nonTerminal]) {
+        bool hasEpsilon = true; // Track if ε is needed
+
+        for (char symbol : production) {
+            if (islower(symbol) || symbol == '(' || symbol == ')') { // Terminal symbols
+                firstSets[nonTerminal].insert(symbol);
+                hasEpsilon = false;
+                break;
+            } else if (isupper(symbol)) { // Non-terminal symbols
+                computeFirst(symbol);
+                for (char c : firstSets[symbol]) {
+                    if (c != 'ε') firstSets[nonTerminal].insert(c);
+                }
+
+                if (firstSets[symbol].count('ε') == 0) {
+                    hasEpsilon = false;
+                    break;
+                }
+            }
+        }
+
+        if (hasEpsilon) firstSets[nonTerminal].insert('ε'); // If all symbols had ε
+    }
+}
+
+// Function to compute FOLLOW sets
+void computeFollow(char nonTerminal) {
+    if (!followSets[nonTerminal].empty()) return; // Avoid recomputation
+
+    if (nonTerminal == 'S') followSets[nonTerminal].insert('$'); // Start symbol
+
+    for (auto it = grammar.begin(); it != grammar.end(); ++it) {
+        char lhs = it->first;
+        for (const string &production : it->second) {
+            for (size_t i = 0; i < production.size(); i++) {
+                if (production[i] == nonTerminal) {
+                    bool hasEpsilon = false;
+
+                    // Look ahead in the production
+                    for (size_t j = i + 1; j < production.size(); j++) {
+                        if (isupper(production[j])) { // Non-terminal
+                            for (char c : firstSets[production[j]]) {
+                                if (c != 'ε') followSets[nonTerminal].insert(c);
+                            }
+                            if (firstSets[production[j]].count('ε') == 0) break;
+                            hasEpsilon = true;
+                        } else { // Terminal
+                            followSets[nonTerminal].insert(production[j]);
+                            hasEpsilon = false;
+                            break;
+                        }
+                    }
+
+                    // If at the end of production or ε present, inherit FOLLOW from LHS
+                    if (hasEpsilon || i + 1 == production.size()) {
+                        computeFollow(lhs);
+                        followSets[nonTerminal].insert(followSets[lhs].begin(), followSets[lhs].end());
+                    }
+                }
+            }
+        }
+    }
+}
+
+int main() {
+    // Define the grammar
+    grammar['S'] = {"ABC", "D"};
+    grammar['A'] = {"a", "ε"};
+    grammar['B'] = {"b", "ε"};
+    grammar['C'] = {"(S)", "c"};
+    grammar['D'] = {"AC"};
+
+    // Compute FIRST sets
+    for (auto it = grammar.begin(); it != grammar.end(); ++it) {
+        computeFirst(it->first);
+    }
+
+    // Compute FOLLOW sets
+    for (auto it = grammar.begin(); it != grammar.end(); ++it) {
+        computeFollow(it->first);
+    }
+
+    // Print FIRST sets
+    cout << "First Sets:\n";
+    for (auto it = firstSets.begin(); it != firstSets.end(); ++it) {
+        cout << it->first << " = { ";
+        for (char c : it->second) cout << c << " ";
+        cout << "}\n";
+    }
+
+    // Print FOLLOW sets
+    cout << "\nFollow Sets:\n";
+    for (auto it = followSets.begin(); it != followSets.end(); ++it) {
+        cout << it->first << " = { ";
+        for (char c : it->second) cout << c << " ";
+        cout << "}\n";
+    }
+
+    return 0;
+}
