@@ -1,0 +1,80 @@
+#include <iostream>
+#include <string>
+
+using namespace std;
+
+string input;
+size_t index = 0;
+
+bool S();
+bool L();
+bool L_();
+bool match(char c);
+string removeSpaces(string str);
+
+int main() {
+    cout << "Enter the string to validate: ";
+    getline(cin, input);
+
+    input = removeSpaces(input); // Remove spaces for consistent parsing
+    index = 0; // Reset index
+
+    if (S() && index == input.length()) {
+        cout << "Valid string" << endl;
+    } else {
+        cout << "Invalid string" << endl;
+    }
+
+    return 0;
+}
+
+// Grammar rule: S → ( L ) | a
+bool S() {
+    if (match('a')) { // S → a
+        return true;
+    } else if (match('(')) { // S → ( L )
+        if (L()) {
+            return match(')');
+        }
+    }
+    return false;
+}
+
+// Grammar rule: L → S L'
+bool L() {
+    if (S()) {
+        return L_();
+    }
+    return false;
+}
+
+// Grammar rule: L' → , S L' | ε
+bool L_() {
+    if (match(',')) {
+        if (S()) {
+            return L_();
+        }
+        return false;
+    }
+    return true; // ε transition (empty string allowed)
+}
+
+// Checks if the current character matches the expected one
+bool match(char c) {
+    if (index < input.length() && input[index] == c) {
+        index++;
+        return true;
+    }
+    return false;
+}
+
+// Removes spaces from the input string
+string removeSpaces(string str) {
+    string result;
+    for (char c : str) {
+        if (c != ' ') {
+            result += c;
+        }
+    }
+    return result;
+}
